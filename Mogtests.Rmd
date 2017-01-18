@@ -1,0 +1,53 @@
+---
+title: "MOG_Tests"
+output: html_document
+---
+
+```{r,echo=F,warning=FALSE,message=FALSE}
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+setwd("~/MotionMeerkat_paper")
+```
+
+```{r}
+f<-list.files("F:/MotionMeerkat/",full.names=TRUE,pattern="Results",recursive = T)
+
+getPar<-function(i){
+  p<-readLines(i)
+  
+  filename<-str_match(i,"M/(\\w+)")[[2]]
+  
+  learning_rate=as.numeric(str_match(i,"(\\d+.\\d+)/(\\d+)/M")[2])
+  variance_rate=as.numeric(str_match(i,"(\\d+.\\d+)/(\\d+)/M")[3])
+  
+  r<-p[str_detect(p,"Hitrate")]
+  events=as.numeric(str_match(r,"Hitrate: (\\d+.\\d+)")[2])
+  
+  d<-data.frame(Filename=filename,Learning_Rate=learning_rate,Variance_rate=variance_rate,Events=events)
+  return(d)
+}
+
+dat<-rbind_all(lapply(f,getPar))
+
+dat$Filename<-factor(dat$Filename)
+
+levels(dat$Filename)<-c("Timelapse - variable light","Timelapse - windy","Underwater - still","High definition - windy","High definition - still","Timelapse - windy2","Underwater - waves")
+dat<-split(dat,dat$Filename)
+```
+
+Plot
+
+```{r,fig.height=10,fig.width=15}
+
+pl<-lapply(dat,function(x){
+  #there is some downsampling
+ggplot(x,aes(x=factor(Learning_Rate),y=factor(Variance_rate),fill=Events)) + geom_tile()  + scale_fill_continuous(low="blue",high="red") + labs(x="Learning Rate",y=" Variance Tolerance",fill="% Frames Returned") + ggtitle(unique(x$Filename))
+})
+
+m<-marrangeGrob(pl,ncol=3,nrow=3)
+
+ggsave("Mogtests.jpeg",m,height = 7,width=12,dpi=600)
+
+```
